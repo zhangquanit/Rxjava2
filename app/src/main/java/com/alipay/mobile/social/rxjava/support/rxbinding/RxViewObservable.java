@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
  * <li>1、包装Observable，支持Observable方法链式调用</li>
  * <li>2、发生异常时，自动重新订阅，保证后续事件顺利得到执行</li>
  * </ul>
+ *
  * @param <T>
  */
 public abstract class RxViewObservable<T> implements Disposable {
@@ -106,6 +107,14 @@ public abstract class RxViewObservable<T> implements Disposable {
                             mOnTerminate.run();
                         }
                     }
+                }).doAfterTerminate(new Action() {
+                    @Override
+                    public void run() throws Exception {
+//                        System.out.println("====doAfterTerminate");
+//                        if (null !=mOnFinally) {
+//                            mOnFinally.run();
+//                        }
+                    }
                 });
         doSubscribeActual();
         return this;
@@ -115,12 +124,13 @@ public abstract class RxViewObservable<T> implements Disposable {
         mDisposable = mObservable.subscribe(new Consumer<T>() {
             @Override
             public void accept(T t) throws Exception {
-                if (null != mOnTerminate) {
-                    mOnTerminate.run();
-                }
 
                 if (null != mOnNext) {
                     mOnNext.accept(t);
+                }
+
+                if (null != mOnTerminate) {
+                    mOnTerminate.run();
                 }
 
                 if (null != mOnFinally) {
@@ -155,6 +165,10 @@ public abstract class RxViewObservable<T> implements Disposable {
         if (null != mDisposable) {
             mDisposable.dispose();
         }
+        mOnNext = null;
+        mOnFinally = null;
+        mOnError = null;
+        mOnTerminate = null;
     }
 
     @Override

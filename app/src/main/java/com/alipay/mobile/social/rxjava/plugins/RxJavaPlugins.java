@@ -43,6 +43,9 @@ public final class RxJavaPlugins {
     static volatile Function<? super Runnable, ? extends Runnable> onScheduleHandler;
 
     @Nullable
+    static volatile Function<? super Callable<Scheduler>, ? extends Scheduler> onInitSingleHandler;
+
+    @Nullable
     static volatile Function<? super Callable<Scheduler>, ? extends Scheduler> onInitComputationHandler;
 
     @Nullable
@@ -67,6 +70,22 @@ public final class RxJavaPlugins {
      * Prevents changing the plugins.
      */
     static volatile boolean lockdown;
+
+    /**
+     * Calls the associated hook function.
+     * @param defaultScheduler a {@link Callable} which returns the hook's input value
+     * @return the value returned by the hook, not null
+     * @throws NullPointerException if the callable parameter or its result are null
+     */
+    @NonNull
+    public static Scheduler initSingleScheduler(@NonNull Callable<Scheduler> defaultScheduler) {
+        ObjectHelper.requireNonNull(defaultScheduler, "Scheduler Callable can't be null");
+        Function<? super Callable<Scheduler>, ? extends Scheduler> f = onInitSingleHandler;
+        if (f == null) {
+            return callRequireNonNull(defaultScheduler);
+        }
+        return applyRequireNonNull(f, defaultScheduler);
+    }
 
     /**
      * Calls the associated hook function.

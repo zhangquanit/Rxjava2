@@ -41,11 +41,11 @@ public final class IoScheduler extends Scheduler {
     private static final String EVICTOR_THREAD_NAME_PREFIX = "RxCachedWorkerPoolEvictor";
     static final RxThreadFactory EVICTOR_THREAD_FACTORY;
 
-    private static final long KEEP_ALIVE_TIME = 60; //60
+    private static final long KEEP_ALIVE_TIME = 10;
     private static final TimeUnit KEEP_ALIVE_UNIT = TimeUnit.SECONDS;
 
     static final ThreadWorker SHUTDOWN_THREAD_WORKER;
-    final ThreadFactory threadFactory;
+    private ThreadFactory threadFactory;
     final AtomicReference<CachedWorkerPool> pool;
 
     /**
@@ -111,14 +111,14 @@ public final class IoScheduler extends Scheduler {
             }
 
             // No cached worker found, so create a new one.
-            ThreadWorker w = new ThreadWorker(threadFactory);
-            allWorkers.add(w);
-            System.out.println("无空闲线程 创建新线程"+w);
-            return w;
+
+            ThreadWorker worker = new ThreadWorker(threadFactory);
+            allWorkers.add(worker);
+            return worker;
         }
 
         void release(ThreadWorker threadWorker) {
-            System.out.println("IoScheduler  释放线程 " + threadWorker);
+
             // Refresh expire time before putting worker back in pool
             threadWorker.setExpirationTime(now() + keepAliveTime);
 
@@ -126,7 +126,6 @@ public final class IoScheduler extends Scheduler {
         }
 
         void evictExpiredWorkers() {
-            System.out.println("-------evictExpiredWorkers");
             if (!expiringWorkerQueue.isEmpty()) {
                 long currentTimestamp = now();
 
@@ -134,7 +133,6 @@ public final class IoScheduler extends Scheduler {
                     if (threadWorker.getExpirationTime() <= currentTimestamp) {
                         if (expiringWorkerQueue.remove(threadWorker)) {
                             allWorkers.remove(threadWorker);
-//                            threadWorker.dispose();
                         }
                     } else {
                         // Queue is ordered with the worker that will expire first in the beginning, so when we
@@ -217,7 +215,6 @@ public final class IoScheduler extends Scheduler {
             this.pool = pool;
             this.tasks = new CompositeDisposable();
             this.threadWorker = pool.get();
-            System.out.println("从线程池中获取到的 threadWorker=" + threadWorker);
         }
 
         @Override

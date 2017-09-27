@@ -166,10 +166,8 @@ public class NewThreadWorker extends Scheduler.Worker implements Disposable {
 
     @Override
     public void dispose() {
-        System.out.println("NewThreadWorker    dispose="+disposed);
         if (!disposed) {
             disposed = true;
-            System.out.println("NewThreadWorker    shutdownNow");
             executor.shutdownNow();
         }
     }

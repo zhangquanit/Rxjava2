@@ -72,9 +72,11 @@
 -keep public class com.alipay.mobile.social.rxjava.support.RpcExceptionUncaughter {
    *;
 }
+
 -keep public class com.alipay.mobile.social.rxjava.support.rxbinding.** {
    public *;
 }
+
 -keep public class com.alipay.mobile.social.rxjava.support.RxActivity {
    public *;
 }

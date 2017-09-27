@@ -13,7 +13,7 @@ import com.rxjava2.demo.R;
 import java.util.concurrent.TimeUnit;
 
 
-public class RxbindingTest extends Activity {
+public class ComputionSchedulerTest extends Activity {
     private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
     @Override

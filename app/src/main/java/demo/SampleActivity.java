@@ -46,24 +46,64 @@ public class SampleActivity extends Activity {
         inputTextView = (TextView) findViewById(textView);
         et_input = (EditText) findViewById(R.id.et);
 
-
+//        doSth();
+        ioSchedulerTest();
         rxbindingTest();
         cancelLastRequestTest();
-        computionTest();
+        computionSchedulerTest();
+        executorSchedulerTest();
     }
 
+    Disposable subscribe;
 
-    private void computionTest() {
+    private void ioSchedulerTest() {
+        if (null != subscribe && !subscribe.isDisposed()) {
+            subscribe.dispose();
+        }
+        subscribe = Observable.create(new ObservableOnSubscribe<String>() {
+            @Override
+            public void subscribe(ObservableEmitter<String> emitter) throws Exception {
+                System.out.println("subscribe start");
+                emitter.onNext("a");
+                Thread.sleep(5 * 1000);
+                emitter.onComplete();
+                System.out.println("subscribe end");
+            }
+        })
+                .subscribeOn(Schedulers.io())
+                .subscribe(new Consumer<String>() {
+                    @Override
+                    public void accept(String s) throws Exception {
+                        System.out.println("onNext " + s);
+                    }
+                });
+    }
+
+    private void computionSchedulerTest() {
         RxView.clicks(findViewById(R.id.btn_computionScheduler))
                 .throttleFirst(1, TimeUnit.SECONDS)
                 .subscribe(new Consumer<View>() {
                     @Override
                     public void accept(View view) throws Exception {
-                        startActivity(new Intent(SampleActivity.this, RxbindingTest.class));
+                        startActivity(new Intent(SampleActivity.this, ComputionSchedulerTest.class));
 
                     }
                 });
     }
+
+    private void executorSchedulerTest() {
+        RxView.clicks(findViewById(R.id.btn_executorScheduler))
+                .throttleFirst(1, TimeUnit.SECONDS)
+                .subscribe(new Consumer<View>() {
+                    @Override
+                    public void accept(View view) throws Exception {
+                        startActivity(new Intent(SampleActivity.this, ExecutorSchedulerTest.class));
+
+                    }
+                });
+    }
+
+    private int num = 0;
 
     private void rxbindingTest() {
         /**
@@ -74,6 +114,8 @@ public class SampleActivity extends Activity {
                     @Override
                     public void accept(View view) throws Exception {
                         System.out.println("btn1 onNext ");
+//                        doSth();
+                        ioSchedulerTest();
                     }
                 });
 
@@ -86,6 +128,7 @@ public class SampleActivity extends Activity {
                     @Override
                     public void accept(View view) throws Exception {
                         System.out.println("btn2 doOnNext " + Thread.currentThread().getName());
+
                     }
                 })
                 .observeOn(Schedulers.io())
@@ -93,6 +136,7 @@ public class SampleActivity extends Activity {
                     @Override
                     public Boolean apply(View view) throws Exception {
                         System.out.println("btn2 map " + Thread.currentThread().getName());
+
                         return doRpcExecution();
                     }
                 })
@@ -100,18 +144,26 @@ public class SampleActivity extends Activity {
                     @Override
                     public void run() throws Exception {
                         System.out.println("btn2 doOnTerminate " + Thread.currentThread().getName());
+
                     }
                 })
                 .doAfterTerminate(new Action() {
                     @Override
                     public void run() throws Exception {
                         System.out.println("btn2 doAfterTerminate " + Thread.currentThread().getName());
+
                     }
                 })
                 .subscribe(new Consumer<Boolean>() {
                     @Override
                     public void accept(Boolean rpcResult) throws Exception {
                         System.out.println("btn2 onNext " + rpcResult + " " + Thread.currentThread().getName());
+
+                        num++;
+                        if (num == 2) {
+//                            Integer.valueOf("A");
+                            num = 0;
+                        }
                     }
                 }, new Consumer<Throwable>() {
                     @Override
@@ -142,6 +194,62 @@ public class SampleActivity extends Activity {
 
     }
 
+    private void doSth() {
+        Observable.create(new ObservableOnSubscribe<View>() {
+            @Override
+            public void subscribe(ObservableEmitter<View> emitter) throws Exception {
+                emitter.onNext(new View(SampleActivity.this));
+
+                emitter.onComplete();
+            }
+        })
+                .subscribeOn(Schedulers.io())
+                .doOnNext(new Consumer<View>() {
+                    @Override
+                    public void accept(View view) throws Exception {
+                        System.out.println("btn2 doOnNext " + Thread.currentThread().getName());
+                        Integer.valueOf("a");
+                    }
+                })
+                .observeOn(Schedulers.io())
+                .map(new Function<View, Boolean>() {
+                    @Override
+                    public Boolean apply(View view) throws Exception {
+                        System.out.println("btn2 map " + Thread.currentThread().getName());
+                        return doRpcExecution();
+                    }
+                })
+                .doOnTerminate(new Action() {
+                    @Override
+                    public void run() throws Exception {
+                        System.out.println("btn2 doOnTerminate " + Thread.currentThread().getName());
+                    }
+                })
+                .doAfterTerminate(new Action() {
+                    @Override
+                    public void run() throws Exception {
+                        System.out.println("btn2 doAfterTerminate " + Thread.currentThread().getName());
+
+                    }
+                })
+                .subscribe(new Consumer<Boolean>() {
+                    @Override
+                    public void accept(Boolean rpcResult) throws Exception {
+                        System.out.println("btn2 onNext " + rpcResult + " " + Thread.currentThread().getName());
+                        num++;
+                        if (num == 1) {
+//                            Integer.valueOf("A");
+                            num = 0;
+                        }
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(Throwable throwable) throws Exception {
+                        System.out.println("btn2 onError " + throwable.getMessage() + " " + Thread.currentThread().getName());
+                    }
+                });
+    }
+
     /**
      * 取消上次请求
      */
@@ -150,8 +258,7 @@ public class SampleActivity extends Activity {
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-//                        doRequest();
-                        computionTest();
+                        doRequest();
                     }
                 });
 

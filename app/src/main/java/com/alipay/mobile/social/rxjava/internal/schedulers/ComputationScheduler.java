@@ -26,14 +26,19 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+
 /**
  * Holds a fixed pool of worker threads and assigns them
  * to requested Scheduler.Workers in a round-robin fashion.
  */
 public final class ComputationScheduler extends Scheduler {
-    /** This will indicate no pool is active. */
+    /**
+     * This will indicate no pool is active.
+     */
     static final FixedSchedulerPool NONE;
-    /** Manages a fixed number of workers. */
+    /**
+     * Manages a fixed number of workers.
+     */
     private static final String THREAD_NAME_PREFIX = "RxComputationThreadPool";
     static final RxThreadFactory THREAD_FACTORY;
     /**
@@ -41,19 +46,22 @@ public final class ComputationScheduler extends Scheduler {
      * Zero or less is interpreted as use available. Capped by available.
      */
     static final String KEY_MAX_THREADS = "rx2.computation-threads";
-    /** The maximum number of computation scheduler threads. */
+    /**
+     * The maximum number of computation scheduler threads.
+     */
     static final int MAX_THREADS;
 
     static final PoolWorker SHUTDOWN_WORKER;
 
     final ThreadFactory threadFactory;
     final AtomicReference<FixedSchedulerPool> pool;
-    /** The name of the system property for setting the thread priority for this Scheduler. */
+    /**
+     * The name of the system property for setting the thread priority for this Scheduler.
+     */
     private static final String KEY_COMPUTATION_PRIORITY = "rx2.computation-priority";
 
     static {
         MAX_THREADS = cap(Runtime.getRuntime().availableProcessors(), Integer.getInteger(KEY_MAX_THREADS, 0));
-
         SHUTDOWN_WORKER = new PoolWorker(new RxThreadFactory("RxComputationShutdown"));
         SHUTDOWN_WORKER.dispose();
 
@@ -75,14 +83,13 @@ public final class ComputationScheduler extends Scheduler {
 
         final PoolWorker[] eventLoops;
         long n;
+        ThreadFactory threadFactory;
 
         FixedSchedulerPool(int maxThreads, ThreadFactory threadFactory) {
             // initialize event loops
             this.cores = maxThreads;
+            this.threadFactory = threadFactory;
             this.eventLoops = new PoolWorker[maxThreads];
-            for (int i = 0; i < maxThreads; i++) {
-                this.eventLoops[i] = new PoolWorker(threadFactory);
-            }
         }
 
         public PoolWorker getEventLoop() {
@@ -91,7 +98,13 @@ public final class ComputationScheduler extends Scheduler {
                 return SHUTDOWN_WORKER;
             }
             // simple round robin, improvements to come
-            return eventLoops[(int) (n++ % c)];
+            int index = (int) (n++ % c);
+            PoolWorker poolWorker = eventLoops[index];
+            if (null == poolWorker) {
+                poolWorker = new PoolWorker(threadFactory);
+                eventLoops[index] = poolWorker;
+            }
+            return poolWorker;
         }
 
         public void shutdown() {
@@ -122,20 +135,17 @@ public final class ComputationScheduler extends Scheduler {
         start();
     }
 
-    @NonNull
     @Override
     public Worker createWorker() {
         return new EventLoopWorker(pool.get().getEventLoop());
     }
 
-    @NonNull
     @Override
     public Disposable scheduleDirect(@NonNull Runnable run, long delay, TimeUnit unit) {
         PoolWorker w = pool.get().getEventLoop();
         return w.scheduleDirect(run, delay, unit);
     }
 
-    @NonNull
     @Override
     public Disposable schedulePeriodicallyDirect(@NonNull Runnable run, long initialDelay, long period, TimeUnit unit) {
         PoolWorker w = pool.get().getEventLoop();
@@ -180,13 +190,10 @@ public final class ComputationScheduler extends Scheduler {
             this.both = new ListCompositeDisposable();
             this.both.add(serial);
             this.both.add(timed);
-
-            System.out.println("EventLoopWorker poolWorker="+poolWorker);
         }
 
         @Override
         public void dispose() {
-            System.out.println("EventLoopWorker dispose");
             if (!disposed) {
                 disposed = true;
                 both.dispose();
@@ -198,7 +205,6 @@ public final class ComputationScheduler extends Scheduler {
             return disposed;
         }
 
-        @NonNull
         @Override
         public Disposable schedule(@NonNull Runnable action) {
             if (disposed) {
@@ -208,7 +214,6 @@ public final class ComputationScheduler extends Scheduler {
             return poolWorker.scheduleActual(action, 0, TimeUnit.MILLISECONDS, serial);
         }
 
-        @NonNull
         @Override
         public Disposable schedule(@NonNull Runnable action, long delayTime, @NonNull TimeUnit unit) {
             if (disposed) {

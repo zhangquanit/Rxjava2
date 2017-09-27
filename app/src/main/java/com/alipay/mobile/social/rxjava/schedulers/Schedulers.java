@@ -17,10 +17,13 @@ import com.alipay.mobile.social.rxjava.Scheduler;
 import com.alipay.mobile.social.rxjava.annotations.NonNull;
 import com.alipay.mobile.social.rxjava.functions.Function;
 import com.alipay.mobile.social.rxjava.internal.schedulers.ComputationScheduler;
+import com.alipay.mobile.social.rxjava.internal.schedulers.ExecutorScheduler;
 import com.alipay.mobile.social.rxjava.internal.schedulers.IoScheduler;
+import com.alipay.mobile.social.rxjava.internal.schedulers.SingleScheduler;
 import com.alipay.mobile.social.rxjava.plugins.RxJavaPlugins;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 
@@ -36,10 +39,15 @@ import java.util.concurrent.ThreadFactory;
  */
 public final class Schedulers {
 
+    static final Scheduler SINGLE;
 
     static final Scheduler IO;
 
     static final Scheduler COMPUTATION;
+
+    static final class SingleHolder {
+        static final Scheduler DEFAULT = new SingleScheduler();
+    }
 
     static final class IoHolder {
         static final Scheduler DEFAULT = new IoScheduler();
@@ -50,6 +58,9 @@ public final class Schedulers {
     }
 
     static {
+
+        SINGLE = RxJavaPlugins.initSingleScheduler(new SingleTask());
+
         COMPUTATION = RxJavaPlugins.initComputationScheduler(new ComputationTask());
 
         IO = RxJavaPlugins.initIoScheduler(new IOTask());
@@ -104,7 +115,6 @@ public final class Schedulers {
         return RxJavaPlugins.onIoScheduler(IO);
     }
 
-
     /**
      * Returns a default, shared {@link Scheduler} instance intended for computational work.
      * <p>
@@ -127,6 +137,37 @@ public final class Schedulers {
     @NonNull
     public static Scheduler computation() {
         return RxJavaPlugins.onComputationScheduler(COMPUTATION);
+    }
+
+    /**
+     * Returns a default, shared, single-thread-backed {@link Scheduler} instance for work
+     * requiring strongly-sequential execution on the same background thread.
+     * <p>
+     * Uses:
+     * <ul>
+     * <li>main event loop</li>
+     * <li>support Schedulers.from(Executor) and from(ExecutorService) with delayed scheduling</li>
+     * <li>support benchmarks that pipeline data from the main thread to some other thread and
+     * avoid core-bashing of computation's round-robin nature</li>
+     * </ul>
+     * <p>
+     * Unhandled errors will be delivered to the scheduler Thread's {@link java.lang.Thread.UncaughtExceptionHandler}.
+     */
+    @NonNull
+    public static Scheduler single() {
+        return SINGLE;
+    }
+
+    @NonNull
+    public static Scheduler from(@NonNull Executor executor) {
+        return new ExecutorScheduler(executor);
+    }
+
+    static final class SingleTask implements Callable<Scheduler> {
+        @Override
+        public Scheduler call() throws Exception {
+            return SingleHolder.DEFAULT;
+        }
     }
 
     static final class IOTask implements Callable<Scheduler> {

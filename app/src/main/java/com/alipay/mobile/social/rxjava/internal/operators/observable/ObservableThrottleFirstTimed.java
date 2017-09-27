@@ -86,7 +86,8 @@ public final class ObservableThrottleFirstTimed<T> extends AbstractObservableWit
                 if (d != null) {
                     d.dispose();
                 }
-                DisposableHelper.replace(this, worker.schedule(this, timeout, unit));
+                Disposable schedule = worker.schedule(this, timeout, unit);
+                DisposableHelper.replace(this, schedule);
             }
 
 

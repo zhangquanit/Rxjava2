@@ -54,4 +54,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="ComputionScheduler测试" />
+
+    <Button
+        android:id="@+id/btn_executorScheduler"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ExecutorScheduler测试" />
 </LinearLayout>
